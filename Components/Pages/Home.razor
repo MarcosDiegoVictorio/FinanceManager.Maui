@@ -1,0 +1,356 @@
+@page "/"
+@page "/home"
+@using System.Globalization
+@using FinanceManager.Maui.Models
+@using FinanceManager.Maui.Services
+@inject FinanceService Finance
+@inject SessionService Session
+@inject IJSRuntime JSRuntime
+
+<div class="finance-app">
+    <header class="app-header animate-fade-in">
+        <div class="logo">💎</div>
+        <h1>FinanceVictorios</h1>
+        <p class="subtitle">Visão Geral e Fluxo de Caixa</p>
+    </header>
+
+    <!-- Glassmorphic Dashboard Card -->
+    <div class="dashboard-hero card animate-slide-up">
+        <span class="hero-label">Saldo Total (Balanço Geral)</span>
+        <h2 class="hero-value">@_totalBalance.ToString("C", PtBr)</h2>
+        
+        <div class="hero-footer">
+            <div class="hero-footer-stat">
+                <span class="hero-sublabel">Receitas (Mês)</span>
+                <span class="hero-subvalue positive">+@_currentMonthIncomes.ToString("C", PtBr)</span>
+            </div>
+            <div class="hero-footer-stat">
+                <span class="hero-sublabel">Despesas (Mês)</span>
+                <span class="hero-subvalue negative">-@_currentMonthExpenses.ToString("C", PtBr)</span>
+            </div>
+            <div class="hero-footer-stat">
+                <span class="hero-sublabel">Lançamentos</span>
+                <span class="hero-subvalue">@_transactions.Count</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense Chart Card -->
+    <div class="chart-card card animate-slide-up" style="animation-delay: 0.05s;">
+        <h3 class="section-title" style="margin-top: 0; width: 100%;">Distribuição de Despesas</h3>
+        @if (_transactions.Any(t => !t.IsIncome))
+        {
+            <div class="chart-container">
+                <canvas id="expensePieChart"></canvas>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state" style="width: 100%; margin: 0; padding: 1.5rem 1rem;">
+                <div class="empty-icon" style="font-size: 1.5rem;">📊</div>
+                <p class="empty" style="font-size: 0.85rem;">Nenhuma despesa para exibir o gráfico.</p>
+            </div>
+        }
+    </div>
+
+    <!-- Monthly Navigation and Transactions -->
+    <div class="list-card card animate-slide-up" style="animation-delay: 0.1s;">
+        <div class="dashboard-nav">
+            <button type="button" class="btn-icon" @onclick="PreviousMonth" aria-label="Mês anterior">‹</button>
+            <h2>@_selectedMonth.ToString("MMMM yyyy", PtBr)</h2>
+            <button type="button" class="btn-icon" @onclick="NextMonth" aria-label="Próximo mês">›</button>
+        </div>
+
+        <h3 class="section-title">Lançamentos do Mês</h3>
+
+        @if (_transactions.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📁</div>
+                <p class="empty">Nenhum lançamento encontrado para este período.</p>
+            </div>
+        }
+        else
+        {
+            <ul class="transaction-list">
+                @foreach (var item in _transactions)
+                {
+                    <li class="transaction-item animate-fade-in">
+                        <div class="tx-main">
+                            <strong class="tx-desc">@item.Description</strong>
+                            <span class="tx-category">
+                                @item.Category
+                                @if (item.UserId != Session.CurrentUser?.Id)
+                                {
+                                    <span class="tx-creator" style="font-size: 0.7rem; color: var(--accent); margin-left: 0.4rem;">• @item.CreatorName</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="tx-meta">
+                            <span class="tx-date">@item.Date.ToString("dd/MM")</span>
+                            <span class="tx-value @(item.IsIncome ? "positive" : "negative")">
+                                @(item.IsIncome ? "+" : "-") @item.Value.ToString("C", PtBr)
+                            </span>
+                            @if (item.IsFixed)
+                            {
+                                <span class="badge fixed">Fixo</span>
+                            }
+                            else if (item.TotalInstallments > 1)
+                            {
+                                <span class="badge installment">@item.TotalInstallments×</span>
+                            }
+                        </div>
+                        @if (item.UserId == Session.CurrentUser?.Id)
+                        {
+                            <button type="button" class="btn-delete" @onclick="() => DeleteAsync(item.Id)" title="Excluir">×</button>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+<style>
+    /* Keyframe Animations */
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+    .animate-slide-up {
+        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Hero Dashboard Card Styles */
+    .dashboard-hero {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+        pointer-events: none;
+    }
+
+    .hero-label {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-value {
+        font-size: 2.25rem;
+        font-weight: 800;
+        margin: 0 0 1.5rem 0;
+        background: linear-gradient(to right, #3b82f6, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hero-footer {
+        display: flex;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        padding-top: 1rem;
+        gap: 1.5rem;
+    }
+
+    .hero-footer-stat {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hero-sublabel {
+        font-size: 0.7rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .hero-subvalue {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin-top: 0.25rem;
+    }
+
+    .hero-subvalue.positive {
+        color: #22c55e;
+    }
+
+    .hero-subvalue.negative {
+        color: #ef4444;
+    }
+
+    /* Form and Section Styles */
+    .section-title {
+        font-size: 0.95rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 1.5rem 0 1rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        padding-bottom: 0.5rem;
+    }
+
+    .tx-desc {
+        color: #f8fafc;
+    }
+
+    .tx-value.positive {
+        color: var(--success) !important;
+    }
+
+    .tx-value.negative {
+        color: var(--danger) !important;
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        border: 1px dashed rgba(255, 255, 255, 0.06);
+        margin: 1rem 0;
+    }
+
+    .empty-icon {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        opacity: 0.5;
+    }
+
+    /* Unificação da Identidade Visual (Logo + Cabeçalho) */
+    .app-header {
+        text-align: center;
+        margin-bottom: 1.75rem;
+    }
+
+    .app-header .logo {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        display: inline-block;
+        animation: logo-float 3s ease-in-out infinite;
+    }
+
+    .app-header h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin: 0;
+        background: linear-gradient(to right, #3b82f6, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.025em;
+    }
+
+    .app-header .subtitle {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin: 0.5rem 0 0 0;
+    }
+
+    @@keyframes logo-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+    }
+</style>
+
+@code {
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+    private DateTime _selectedMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private decimal _totalBalance;
+    private decimal _currentMonthIncomes;
+    private decimal _currentMonthExpenses;
+    private List<Transaction> _transactions = [];
+
+    private string[] _chartLabels = [];
+    private double[] _chartData = [];
+    private bool _shouldRenderChart;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selectedMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await ReloadDataAsync();
+    }
+
+    private async Task ReloadDataAsync()
+    {
+        if (Session.CurrentUser is null) return;
+
+        // Calculate Total Balance (Incomes - Expenses) up to the selected month
+        var allTransactions = await Finance.GetAllAsync(Session.CurrentUser.Id);
+        var limitDate = new DateTime(_selectedMonth.Year, _selectedMonth.Month, 1).AddMonths(1);
+        var filteredTransactions = allTransactions.Where(t => t.Date < limitDate).ToList();
+        
+        var totalIncomes = filteredTransactions.Where(t => t.IsIncome).Sum(t => t.Value);
+        var totalExpenses = filteredTransactions.Where(t => !t.IsIncome).Sum(t => t.Value);
+        _totalBalance = totalIncomes - totalExpenses;
+
+        // Get current selected month transactions
+        var monthTransactions = await Finance.GetByMonthAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month);
+        _transactions = monthTransactions.ToList();
+        _currentMonthIncomes = _transactions.Where(t => t.IsIncome).Sum(t => t.Value);
+        _currentMonthExpenses = _transactions.Where(t => !t.IsIncome).Sum(t => t.Value);
+
+        // Group expenses by category for the chart
+        var expensesByCategory = _transactions
+            .Where(t => !t.IsIncome)
+            .GroupBy(t => t.Category)
+            .Select(g => new { Category = g.Key, Total = g.Sum(x => x.Value) })
+            .OrderByDescending(g => g.Total)
+            .ToList();
+
+        _chartLabels = expensesByCategory.Select(x => x.Category).ToArray();
+        _chartData = expensesByCategory.Select(x => (double)x.Total).ToArray();
+        _shouldRenderChart = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldRenderChart && _chartLabels.Length > 0)
+        {
+            _shouldRenderChart = false;
+            await JSRuntime.InvokeVoidAsync("renderPieChart", "expensePieChart", _chartLabels, _chartData);
+        }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        if (Session.CurrentUser is null) return;
+        await Finance.DeleteAsync(Session.CurrentUser.Id, id);
+        await ReloadDataAsync();
+    }
+
+    private async Task PreviousMonth()
+    {
+        _selectedMonth = _selectedMonth.AddMonths(-1);
+        await ReloadDataAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        _selectedMonth = _selectedMonth.AddMonths(1);
+        await ReloadDataAsync();
+    }
+}

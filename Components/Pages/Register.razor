@@ -1,0 +1,323 @@
+@page "/register"
+@inject Services.AuthService Auth
+@inject NavigationManager Nav
+@using FinanceManager.Maui.Models
+
+<div class="register-container">
+    <div class="register-card animate-slide-up">
+        <header class="register-header">
+            <div class="logo">👤</div>
+            <h1>Criar Conta</h1>
+            <p class="subtitle">Cadastre-se para começar a controlar seus gastos</p>
+        </header>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger animate-fade-in">
+                <span>⚠️ @_errorMessage</span>
+            </div>
+        }
+
+        @if (_success)
+        {
+            <div class="alert alert-success animate-fade-in">
+                <span>🎉 Cadastro realizado com sucesso! Redirecionando...</span>
+            </div>
+        }
+
+        <EditForm Model="_registerModel" OnValidSubmit="HandleRegister">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="name">Nome Completo</label>
+                <InputText id="name" @bind-Value="_registerModel.Name" class="form-control" placeholder="Ex: João da Silva" />
+                <ValidationMessage For="@(() => _registerModel.Name)" class="validation-error" />
+            </div>
+
+            <div class="form-group">
+                <label for="birthdate">Data de Nascimento</label>
+                <InputDate id="birthdate" @bind-Value="_registerModel.BirthDate" class="form-control" />
+                <ValidationMessage For="@(() => _registerModel.BirthDate)" class="validation-error" />
+            </div>
+
+            <div class="form-group">
+                <label for="username">Nome de Usuário</label>
+                <InputText id="username" @bind-Value="_registerModel.Username" class="form-control" placeholder="Ex: joao.silva" />
+                <ValidationMessage For="@(() => _registerModel.Username)" class="validation-error" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha (mín. 6 caracteres)</label>
+                <InputText type="password" id="password" @bind-Value="_registerModel.Password" class="form-control" placeholder="Sua senha secreta" />
+                <ValidationMessage For="@(() => _registerModel.Password)" class="validation-error" />
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Confirmar Senha</label>
+                <InputText type="password" id="confirmPassword" @bind-Value="_registerModel.ConfirmPassword" class="form-control" placeholder="Confirme sua senha" />
+                <ValidationMessage For="@(() => _registerModel.ConfirmPassword)" class="validation-error" />
+            </div>
+
+            <button type="submit" class="btn-register" disabled="@(_loading || _success)">
+                @(_loading ? "Cadastrando..." : "Cadastrar")
+            </button>
+        </EditForm>
+
+        <footer class="register-footer">
+            <span>Já tem uma conta?</span>
+            <a href="login" class="link-login">Faça Login</a>
+        </footer>
+    </div>
+</div>
+
+<style>
+    .register-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        width: 100%;
+        background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
+        padding: 1.5rem;
+    }
+
+    .register-card {
+        background: rgba(30, 41, 59, 0.45);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .register-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .logo {
+        font-size: 2.2rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .register-header h1 {
+        font-size: 1.7rem;
+        font-weight: 800;
+        margin: 0;
+        background: linear-gradient(to right, #3b82f6, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .subtitle {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #94a3b8;
+        margin-bottom: 0.4rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .form-control {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 0.65rem 0.9rem;
+        color: #f8fafc;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        background: rgba(15, 23, 42, 0.85);
+    }
+
+    .validation-error {
+        color: #ef4444;
+        font-size: 0.75rem;
+        margin-top: 0.3rem;
+        font-weight: 500;
+    }
+
+    .btn-register {
+        background: linear-gradient(to right, #2563eb, #3b82f6);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        padding: 0.8rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-top: 1rem;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-register:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-register:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .btn-register:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .alert-danger {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 8px;
+        color: #f87171;
+        padding: 0.65rem 0.9rem;
+        font-size: 0.85rem;
+        margin-bottom: 1.25rem;
+        text-align: left;
+    }
+
+    .alert-success {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: 8px;
+        color: #4ade80;
+        padding: 0.65rem 0.9rem;
+        font-size: 0.85rem;
+        margin-bottom: 1.25rem;
+        text-align: left;
+    }
+
+    .register-footer {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+
+    .link-login {
+        color: #60a5fa;
+        text-decoration: none;
+        font-weight: 700;
+        transition: color 0.2s ease;
+    }
+
+    .link-login:hover {
+        color: #93c5fd;
+        text-decoration: underline;
+    }
+
+    /* Keyframes */
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .animate-slide-up {
+        animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-out forwards;
+    }
+</style>
+
+@code {
+    private readonly RegisterModel _registerModel = new();
+    private string? _errorMessage;
+    private bool _loading;
+    private bool _success;
+
+    private async Task HandleRegister()
+    {
+        _errorMessage = null;
+
+        // Validation: Passwords must match
+        if (_registerModel.Password != _registerModel.ConfirmPassword)
+        {
+            _errorMessage = "As senhas informadas não coincidem.";
+            return;
+        }
+
+        _loading = true;
+
+        try
+        {
+            var user = new User
+            {
+                Name = _registerModel.Name.Trim(),
+                BirthDate = _registerModel.BirthDate,
+                Username = _registerModel.Username.Trim()
+            };
+
+            var result = await Auth.RegisterUserAsync(user, _registerModel.Password);
+            if (result.Success)
+            {
+                _success = true;
+                StateHasChanged();
+                await Task.Delay(2000);
+                Nav.NavigateTo("login");
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao realizar o cadastro: " + ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class RegisterModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "O nome completo é obrigatório.")]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "A data de nascimento é obrigatória.")]
+        public DateTime BirthDate { get; set; } = DateTime.Today.AddYears(-18);
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "O nome de usuário é obrigatório.")]
+        [System.ComponentModel.DataAnnotations.StringLength(50, MinimumLength = 3, ErrorMessage = "O usuário deve ter entre 3 e 50 caracteres.")]
+        public string Username { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "A senha é obrigatória.")]
+        [System.ComponentModel.DataAnnotations.StringLength(100, MinimumLength = 6, ErrorMessage = "A senha deve ter no mínimo 6 caracteres.")]
+        public string Password { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Confirme a sua senha.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

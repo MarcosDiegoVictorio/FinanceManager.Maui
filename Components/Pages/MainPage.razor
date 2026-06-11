@@ -1,0 +1,346 @@
+@page "/main"
+@inject FinanceService Finance
+@inject Services.SessionService Session
+@using System.Globalization
+@using System.ComponentModel.DataAnnotations
+@using FinanceManager.Maui.Models
+
+<div class="finance-app">
+    <header class="app-header">
+        <h1>FinanceVictorios</h1>
+        <p class="subtitle">Novo Lançamento e Histórico</p>
+    </header>
+
+    <section class="dashboard card">
+        <div class="dashboard-nav">
+            <button type="button" class="btn-icon" @onclick="PreviousMonth" aria-label="Mês anterior">‹</button>
+            <h2>@_selectedMonth.ToString("MMMM yyyy", PtBr)</h2>
+            <button type="button" class="btn-icon" @onclick="NextMonth" aria-label="Próximo mês">›</button>
+        </div>
+
+        @if (_dashboard is not null)
+        {
+            <div class="stats-grid animate-fade-in">
+                <div class="stat">
+                    <span class="stat-label">Saldo do Mês</span>
+                    <span class="stat-value @(_dashboard.Balance >= 0 ? "positive-text" : "negative-text")">@_dashboard.Balance.ToString("C", PtBr)</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Receitas</span>
+                    <span class="stat-value positive-text">@_dashboard.TotalIncomes.ToString("C", PtBr)</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Despesas</span>
+                    <span class="stat-value negative-text">@_dashboard.TotalExpenses.ToString("C", PtBr)</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Lançamentos</span>
+                    <span class="stat-value">@_dashboard.TransactionCount</span>
+                </div>
+            </div>
+        }
+    </section>
+
+    <section class="form-card card">
+        <h3>Novo lançamento</h3>
+        <EditForm Model="_form" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <div class="form-grid">
+                <!-- Transaction Type Toggle -->
+                <div class="field full">
+                    <label>Tipo de Lançamento</label>
+                    <div class="transaction-type-selector">
+                        <button type="button" class="btn-type @(!_form.IsIncome ? "active expense" : "")" @onclick="() => SetTransactionType(false)">Despesa</button>
+                        <button type="button" class="btn-type @(_form.IsIncome ? "active income" : "")" @onclick="() => SetTransactionType(true)">Receita</button>
+                    </div>
+                </div>
+
+                <div class="field full">
+                    <label>Descrição</label>
+                    <InputText @bind-Value="_form.Description" class="input" placeholder="Ex: Aluguel, Salário, Cartão..." />
+                    <ValidationMessage For="@(() => _form.Description)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
+                </div>
+                <div class="field">
+                    <label>Valor (R$)</label>
+                    <InputNumber @bind-Value="_form.Value" class="input" placeholder="0,00" />
+                    <ValidationMessage For="@(() => _form.Value)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
+                </div>
+                <div class="field">
+                    <label>Data</label>
+                    <InputDate @bind-Value="_form.Date" class="input" />
+                </div>
+                <div class="field full">
+                    <label>Categoria</label>
+                    <InputSelect @bind-Value="_form.Category" class="input">
+                        @foreach (var cat in _categories)
+                        {
+                            <option value="@cat.Name">@cat.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="field toggles full">
+                    <label class="checkbox">
+                        <InputCheckbox @bind-Value="_form.IsFixed" />
+                        <span>Lançamento fixo (replica todo mês)</span>
+                    </label>
+                </div>
+                @if (_group is not null)
+                {
+                    <div class="field toggles full" style="margin-top: -0.5rem;">
+                        <label class="checkbox">
+                            <InputCheckbox @bind-Value="_form.IsPrivate" />
+                            <span>Manter esta transação privada (ocultar do grupo)</span>
+                        </label>
+                    </div>
+                }
+                @if (!_form.IsFixed)
+                {
+                    <div class="field">
+                        <label>Parcelas</label>
+                        <InputNumber @bind-Value="_form.TotalInstallments" class="input" min="1" max="48" />
+                        <ValidationMessage For="@(() => _form.TotalInstallments)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
+                    </div>
+                }
+            </div>
+            <button type="submit" class="btn-primary" disabled="@_saving">
+                @(_saving ? "Salvando..." : "Adicionar")
+            </button>
+        </EditForm>
+    </section>
+
+    <section class="list-card card">
+        <h3>Lançamentos</h3>
+        @if (_transactions.Count == 0)
+        {
+            <p class="empty">Nenhum lançamento neste mês.</p>
+        }
+        else
+        {
+            <ul class="transaction-list">
+                @foreach (var item in _transactions)
+                {
+                    <li class="transaction-item">
+                        <div class="tx-main">
+                            <strong>@item.Description</strong>
+                            <span class="tx-category">
+                                @item.Category
+                                @if (item.UserId != Session.CurrentUser?.Id)
+                                {
+                                    <span class="tx-creator" style="font-size: 0.7rem; color: var(--accent); margin-left: 0.4rem;">• @item.CreatorName</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="tx-meta">
+                            <span class="tx-date">@item.Date.ToString("dd/MM")</span>
+                            <span class="tx-value @(item.IsIncome ? "positive" : "negative")">
+                                @(item.IsIncome ? "+" : "-") @item.Value.ToString("C", PtBr)
+                            </span>
+                            @if (item.IsFixed)
+                            {
+                                <span class="badge fixed">Fixo</span>
+                            }
+                            else if (item.TotalInstallments > 1)
+                            {
+                                <span class="badge installment">@item.TotalInstallments×</span>
+                            }
+                        </div>
+                        @if (item.UserId == Session.CurrentUser?.Id)
+                        {
+                            <button type="button" class="btn-delete" @onclick="() => DeleteAsync(item.Id)" title="Excluir">×</button>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</div>
+
+<style>
+    .positive-text {
+        color: #22c55e !important;
+    }
+    
+    .negative-text {
+        color: #ef4444 !important;
+    }
+
+    .tx-value.positive {
+        color: #22c55e !important;
+    }
+
+    .tx-value.negative {
+        color: #ef4444 !important;
+    }
+
+    /* Segmented Control / Type Selector */
+    .transaction-type-selector {
+        display: flex;
+        gap: 0.5rem;
+        background: var(--surface-2);
+        padding: 0.25rem;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 0.5rem;
+    }
+
+    .btn-type {
+        flex: 1;
+        padding: 0.55rem;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        color: var(--text-muted);
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .btn-type:hover {
+        color: var(--text);
+    }
+
+    .btn-type.active.expense {
+        background: var(--danger);
+        color: white;
+    }
+
+    .btn-type.active.income {
+        background: var(--success);
+        color: white;
+    }
+</style>
+
+@code {
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+    private List<Category> _categories = [];
+    private Group? _group;
+    
+    private DateTime _selectedMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private FinanceDashboard? _dashboard;
+    private List<Transaction> _transactions = [];
+    private readonly TransactionForm _form = new();
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selectedMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        _form.Date = _selectedMonth;
+        await LoadCategoriesAsync();
+        await LoadGroupInfoAsync();
+        await ReloadAsync();
+    }
+
+    private async Task LoadGroupInfoAsync()
+    {
+        if (Session.CurrentUser is null) return;
+        _group = await Finance.GetGroupForUserAsync(Session.CurrentUser.Id);
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        if (Session.CurrentUser is null) return;
+        _categories = (await Finance.GetCategoriesByUserAsync(Session.CurrentUser.Id)).ToList();
+        
+        if (!_categories.Any(c => c.Name == _form.Category))
+        {
+            _form.Category = _categories.Any(c => c.Name == "Geral") 
+                ? "Geral" 
+                : (_categories.FirstOrDefault()?.Name ?? "Geral");
+        }
+    }
+
+    private void SetTransactionType(bool isIncome)
+    {
+        _form.IsIncome = isIncome;
+        _form.Category = _categories.Any(c => c.Name == "Geral") ? "Geral" : (_categories.FirstOrDefault()?.Name ?? "Geral");
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (Session.CurrentUser is null) return;
+        _dashboard = await Finance.GetDashboardAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month);
+        _transactions = (await Finance.GetByMonthAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month)).ToList();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (Session.CurrentUser is null) return;
+        if (string.IsNullOrWhiteSpace(_form.Description) || !_form.Value.HasValue || _form.Value.Value <= 0)
+            return;
+
+        _saving = true;
+        try
+        {
+            await Finance.SaveTransactionAsync(new Transaction
+            {
+                UserId = Session.CurrentUser.Id,
+                Description = _form.Description.Trim(),
+                Value = _form.Value.Value,
+                Date = _form.Date ?? _selectedMonth,
+                Category = _form.Category,
+                IsFixed = _form.IsFixed,
+                IsIncome = _form.IsIncome,
+                TotalInstallments = _form.IsFixed ? 1 : Math.Max(1, _form.TotalInstallments),
+                GroupId = _group?.Id,
+                IsPrivate = _form.IsPrivate
+            });
+
+            var previousType = _form.IsIncome;
+            _form.Reset(_selectedMonth);
+            _form.IsIncome = previousType; // preserve type choice
+            _form.Category = _categories.Any(c => c.Name == "Geral") ? "Geral" : (_categories.FirstOrDefault()?.Name ?? "Geral");
+            
+            await ReloadAsync();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        if (Session.CurrentUser is null) return;
+        await Finance.DeleteAsync(Session.CurrentUser.Id, id);
+        await ReloadAsync();
+    }
+
+    private async Task PreviousMonth()
+    {
+        _selectedMonth = _selectedMonth.AddMonths(-1);
+        _form.Date = _selectedMonth;
+        await ReloadAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        _selectedMonth = _selectedMonth.AddMonths(1);
+        _form.Date = _selectedMonth;
+        await ReloadAsync();
+    }
+
+    private sealed class TransactionForm
+    {
+        [Required(ErrorMessage = "A descrição é obrigatória.")]
+        public string Description { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "O valor é obrigatório.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "O valor deve ser maior que zero.")]
+        public decimal? Value { get; set; }
+
+        public DateTime? Date { get; set; }
+        public string Category { get; set; } = "Geral";
+        public bool IsFixed { get; set; }
+
+        [Range(1, 48, ErrorMessage = "O número de parcelas deve ser entre 1 e 48.")]
+        public int TotalInstallments { get; set; } = 1;
+        public bool IsIncome { get; set; }
+        public bool IsPrivate { get; set; }
+
+        public void Reset(DateTime month) => (Description, Value, Date, Category, IsFixed, TotalInstallments, IsIncome, IsPrivate) =
+            (string.Empty, null, month, "Geral", false, 1, false, false);
+    }
+}

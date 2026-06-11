@@ -1,0 +1,256 @@
+@page "/login"
+@inject Services.AuthService Auth
+@inject NavigationManager Nav
+
+<div class="login-container">
+    <div class="login-card animate-slide-up">
+        <header class="login-header">
+            <div class="logo">💎</div>
+            <h1>FinanceVictorios</h1>
+            <p class="subtitle">Gerencie suas finanças com privacidade</p>
+        </header>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger animate-fade-in">
+                <span>⚠️ @_errorMessage</span>
+            </div>
+        }
+
+        <EditForm Model="_loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="username">Nome de Usuário</label>
+                <InputText id="username" @bind-Value="_loginModel.Username" class="form-control" placeholder="Ex: joao.silva" />
+                <ValidationMessage For="@(() => _loginModel.Username)" class="validation-error" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <InputText type="password" id="password" @bind-Value="_loginModel.Password" class="form-control" placeholder="Sua senha secreta" />
+                <ValidationMessage For="@(() => _loginModel.Password)" class="validation-error" />
+            </div>
+
+            <button type="submit" class="btn-login" disabled="@_loading">
+                @(_loading ? "Autenticando..." : "Entrar")
+            </button>
+        </EditForm>
+
+        <footer class="login-footer">
+            <span>Não tem uma conta?</span>
+            <a href="register" class="link-register">Cadastre-se</a>
+        </footer>
+    </div>
+</div>
+
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        width: 100%;
+        background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
+        padding: 1.5rem;
+    }
+
+    .login-card {
+        background: rgba(30, 41, 59, 0.45);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 2.5rem 2rem;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .logo {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-header h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin: 0;
+        background: linear-gradient(to right, #3b82f6, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .subtitle {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #94a3b8;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .form-control {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        color: #f8fafc;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        background: rgba(15, 23, 42, 0.85);
+    }
+
+    .validation-error {
+        color: #ef4444;
+        font-size: 0.75rem;
+        margin-top: 0.35rem;
+        font-weight: 500;
+    }
+
+    .btn-login {
+        background: linear-gradient(to right, #2563eb, #3b82f6);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        padding: 0.85rem;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-top: 1rem;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-login:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-login:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .btn-login:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .alert-danger {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 8px;
+        color: #f87171;
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
+        text-align: left;
+    }
+
+    .login-footer {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+
+    .link-register {
+        color: #60a5fa;
+        text-decoration: none;
+        font-weight: 700;
+        transition: color 0.2s ease;
+    }
+
+    .link-register:hover {
+        color: #93c5fd;
+        text-decoration: underline;
+    }
+
+    /* Keyframes */
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .animate-slide-up {
+        animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-out forwards;
+    }
+</style>
+
+@code {
+    private readonly LoginModel _loginModel = new();
+    private string? _errorMessage;
+    private bool _loading;
+
+    private async Task HandleLogin()
+    {
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await Auth.LoginAsync(_loginModel.Username.Trim(), _loginModel.Password);
+            if (result.Success)
+            {
+                Nav.NavigateTo("");
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Ocorreu um erro ao processar o login: " + ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "O nome de usuário é obrigatório.")]
+        public string Username { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "A senha é obrigatória.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

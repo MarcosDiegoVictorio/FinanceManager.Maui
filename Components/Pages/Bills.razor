@@ -1,0 +1,192 @@
+@page "/bills"
+@inject FinanceService Finance
+@inject Services.SessionService Session
+@inject NavigationManager Nav
+@using System.Globalization
+@using System.ComponentModel.DataAnnotations
+@using FinanceManager.Maui.Models
+
+<div class="finance-app">
+    <header class="app-header">
+        <h1>FinanceVictorios</h1>
+        <p class="subtitle">Contas a Pagar e Alertas 💸</p>
+    </header>
+
+    <section class="form-card card">
+        <h3>Nova Conta a Pagar</h3>
+        <EditForm Model="_form" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <div class="form-grid">
+                <div class="field full">
+                    <label>Descrição</label>
+                    <InputText @bind-Value="_form.Description" class="input" placeholder="Ex: Cartão de Crédito, Energia, Internet..." />
+                    <ValidationMessage For="@(() => _form.Description)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
+                </div>
+                <div class="field">
+                    <label>Valor (R$)</label>
+                    <InputNumber @bind-Value="_form.Value" class="input" placeholder="0,00" />
+                    <ValidationMessage For="@(() => _form.Value)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
+                </div>
+                <div class="field">
+                    <label>Data de Vencimento</label>
+                    <InputDate @bind-Value="_form.DueDate" class="input" />
+                    <ValidationMessage For="@(() => _form.DueDate)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
+                </div>
+                <div class="field full">
+                    <label>Notificar-me quantos dias antes?</label>
+                    <input type="number" @bind="_form.DaysBeforeToNotify" class="input" min="0" max="365" />
+                    <ValidationMessage For="@(() => _form.DaysBeforeToNotify)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
+                </div>
+            </div>
+            <button type="submit" class="btn-primary" disabled="@_saving">
+                @(_saving ? "Salvando..." : "Agendar Conta")
+            </button>
+        </EditForm>
+    </section>
+
+    <section class="list-card card">
+        <h3>Minhas Contas Agendadas</h3>
+        @if (_bills.Count == 0)
+        {
+            <p class="empty">Nenhuma conta cadastrada.</p>
+        }
+        else
+        {
+            <ul class="transaction-list">
+                @foreach (var item in _bills)
+                {
+                    <li class="transaction-item">
+                        <div class="tx-main">
+                            <strong>@item.Description</strong>
+                            <span class="tx-category">
+                                Vence em: @item.DueDate.ToString("dd/MM/yyyy")
+                            </span>
+                        </div>
+                        <div class="tx-meta">
+                            <span class="tx-value negative">
+                                @item.Value.ToString("C", PtBr)
+                            </span>
+                            @if (item.DaysBeforeToNotify == 0)
+                            {
+                                <span class="badge fixed" style="background: rgba(239, 68, 68, 0.2); color: var(--danger);">No dia</span>
+                            }
+                            else
+                            {
+                                <span class="badge installment">Aviso: @item.DaysBeforeToNotify @(item.DaysBeforeToNotify == 1 ? "dia" : "dias") antes</span>
+                            }
+                        </div>
+                        <button type="button" class="btn-delete" @onclick="() => DeleteAsync(item.Id)" title="Excluir">×</button>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</div>
+
+<style>
+    .negative {
+        color: #ef4444 !important;
+    }
+</style>
+
+@code {
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+    private List<BillToPay> _bills = [];
+    private readonly BillForm _form = new();
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.CurrentUser is null)
+        {
+            Nav.NavigateTo("login");
+            return;
+        }
+
+        await RequestNotificationsPermissionAsync();
+        await ReloadAsync();
+    }
+
+    private async Task RequestNotificationsPermissionAsync()
+    {
+#if ANDROID || IOS
+        try
+        {
+            if (await Plugin.LocalNotification.LocalNotificationCenter.Current.AreNotificationsEnabled() == false)
+            {
+                await Plugin.LocalNotification.LocalNotificationCenter.Current.RequestNotificationPermission();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao solicitar permissão de notificações: {ex.Message}");
+        }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (Session.CurrentUser is null) return;
+        _bills = (await Finance.GetBillsToPayAsync(Session.CurrentUser.Id)).ToList();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (Session.CurrentUser is null) return;
+        if (string.IsNullOrWhiteSpace(_form.Description) || !_form.Value.HasValue || _form.Value.Value <= 0)
+            return;
+
+        _saving = true;
+        try
+        {
+            await Finance.SaveBillToPayAsync(new BillToPay
+            {
+                UserId = Session.CurrentUser.Id,
+                Description = _form.Description.Trim(),
+                Value = _form.Value.Value,
+                DueDate = _form.DueDate,
+                DaysBeforeToNotify = _form.DaysBeforeToNotify
+            });
+
+            _form.Reset();
+            await ReloadAsync();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        if (Session.CurrentUser is null) return;
+        await Finance.DeleteBillToPayAsync(Session.CurrentUser.Id, id);
+        await ReloadAsync();
+    }
+
+    private sealed class BillForm
+    {
+        [Required(ErrorMessage = "A descrição é obrigatória.")]
+        public string Description { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "O valor é obrigatório.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "O valor deve ser maior que zero.")]
+        public decimal? Value { get; set; }
+
+        [Required(ErrorMessage = "A data de vencimento é obrigatória.")]
+        public DateTime DueDate { get; set; } = DateTime.Today;
+
+        [Range(0, 365, ErrorMessage = "O número de dias deve ser entre 0 e 365.")]
+        public int DaysBeforeToNotify { get; set; } = 1;
+
+        public void Reset()
+        {
+            Description = string.Empty;
+            Value = null;
+            DueDate = DateTime.Today;
+            DaysBeforeToNotify = 1;
+        }
+    }
+}

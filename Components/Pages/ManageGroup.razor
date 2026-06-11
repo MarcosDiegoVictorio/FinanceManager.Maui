@@ -1,0 +1,389 @@
+@page "/group"
+@inject FinanceService Finance
+@inject Services.SessionService Session
+@inject NavigationManager Nav
+@using FinanceManager.Maui.Models
+
+<div class="finance-app">
+    <header class="app-header animate-fade-in">
+        <h1>Grupo Financeiro</h1>
+        <p class="subtitle">Compartilhe e gerencie despesas de forma colaborativa</p>
+    </header>
+
+    @if (_loading)
+    {
+        <div class="card animate-fade-in" style="text-align: center; padding: 2rem;">
+            <p>Carregando informações...</p>
+        </div>
+    }
+    else if (_group is null)
+    {
+        <!-- No Group: Create Group View -->
+        <section class="form-card card animate-slide-up">
+            <h3>Criar Novo Grupo</h3>
+            <p class="empty" style="text-align: left; margin-bottom: 1rem; font-size: 0.85rem;">
+                Você ainda não pertence a nenhum grupo. Crie um grupo para poder compartilhar lançamentos com outros membros e visualizar relatórios consolidados.
+            </p>
+            <div class="form-grid">
+                <div class="field full">
+                    <label>Nome do Grupo</label>
+                    <input type="text" @bind="_newGroupName" @onkeydown="HandleCreateGroupKeyDown" class="input" placeholder="Ex: Família, República, Viagem..." />
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <span class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;">@_errorMessage</span>
+                    }
+                </div>
+            </div>
+            <button type="button" class="btn-primary" @onclick="CreateGroupAsync" disabled="@_saving">
+                @(_saving ? "Criando..." : "Criar Grupo")
+            </button>
+        </section>
+    }
+    else
+    {
+        <!-- Has Group View -->
+        <section class="dashboard card animate-slide-up" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(59, 130, 246, 0.2);">
+            <span class="hero-label">Grupo Financeiro Ativo</span>
+            <h2 class="hero-value" style="margin: 0.25rem 0 0.5rem 0; font-size: 1.8rem; font-weight: 800; background: linear-gradient(to right, #3b82f6, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                @_group.Name
+            </h2>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                Administrador: <strong style="color: var(--text);">@_adminName</strong>
+            </div>
+        </section>
+
+        @if (IsAdmin)
+        {
+            <!-- Admin View: Add Member Form -->
+            <section class="form-card card animate-slide-up" style="animation-delay: 0.05s;">
+                <h3>Adicionar Membro</h3>
+                <div class="form-grid">
+                    <div class="field full">
+                        <label>Nome de Usuário (Username)</label>
+                        <input type="text" @bind="_addUsername" @onkeydown="HandleAddMemberKeyDown" class="input" placeholder="Digite o username exato do membro..." />
+                        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                        {
+                            <span class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;">@_errorMessage</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_successMessage))
+                        {
+                            <span class="success-message" style="color: #22c55e; font-size: 0.8rem; margin-top: 0.25rem; display: block;">@_successMessage</span>
+                        }
+                    </div>
+                </div>
+                <button type="button" class="btn-primary" @onclick="AddMemberAsync" disabled="@_saving">
+                    @(_saving ? "Adicionando..." : "Convidar Usuário")
+                </button>
+            </section>
+        }
+
+        <!-- Group Members List -->
+        <section class="list-card card animate-slide-up" style="animation-delay: 0.1s;">
+            <h3>Membros do Grupo</h3>
+            <ul class="member-list">
+                @foreach (var member in _members)
+                {
+                    <li class="member-item animate-fade-in">
+                        <div class="member-info">
+                            <strong class="member-name">@member.Name</strong>
+                            <span class="member-username">@@@member.Username</span>
+                        </div>
+                        <div class="member-actions">
+                            @if (member.Id == _group.AdminUserId)
+                            {
+                                <span class="badge fixed" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 0.2rem 0.5rem; font-size: 0.65rem; border-radius: 4px; font-weight: 700;">Admin</span>
+                            }
+                            else if (IsAdmin)
+                            {
+                                <button type="button" class="btn-delete" @onclick="() => RemoveMemberAsync(member.Id)" title="Remover Membro">×</button>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+
+            <div style="margin-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 1.25rem;">
+                @if (IsAdmin)
+                {
+                    <button type="button" class="btn-primary" @onclick="DeleteGroupAsync" style="background: var(--danger); margin-top: 0;" disabled="@_saving">
+                        @(_saving ? "Excluindo..." : "Excluir Grupo (Manter Lançamentos)")
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="btn-primary" @onclick="LeaveGroupAsync" style="background: var(--danger); margin-top: 0;" disabled="@_saving">
+                        @(_saving ? "Saindo..." : "Sair do Grupo")
+                    </button>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+<style>
+    .member-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .member-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .member-item:last-child {
+        border-bottom: none;
+    }
+
+    .member-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .member-name {
+        font-size: 0.95rem;
+        color: #f8fafc;
+    }
+
+    .member-username {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* Reuse animations */
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+    .animate-slide-up {
+        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+</style>
+
+@code {
+    private Group? _group;
+    private List<User> _members = [];
+    private string _adminName = string.Empty;
+    private bool _loading = true;
+    private bool _saving;
+
+    // Forms fields
+    private string _newGroupName = string.Empty;
+    private string _addUsername = string.Empty;
+    private string _errorMessage = string.Empty;
+    private string _successMessage = string.Empty;
+
+    private bool IsAdmin => _group is not null && Session.CurrentUser is not null && _group.AdminUserId == Session.CurrentUser.Id;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.CurrentUser is null)
+        {
+            Nav.NavigateTo("login");
+            return;
+        }
+        await LoadGroupInfoAsync();
+    }
+
+    private async Task LoadGroupInfoAsync()
+    {
+        _loading = true;
+        _errorMessage = string.Empty;
+        _successMessage = string.Empty;
+
+        try
+        {
+            if (Session.CurrentUser is null) return;
+
+            _group = await Finance.GetGroupForUserAsync(Session.CurrentUser.Id);
+            if (_group is not null)
+            {
+                var membersList = await Finance.GetGroupMembersAsync(_group.Id);
+                _members = membersList.ToList();
+                
+                var admin = _members.FirstOrDefault(m => m.Id == _group.AdminUserId);
+                _adminName = admin?.Name ?? "Administrador";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao carregar dados do grupo: " + ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CreateGroupAsync()
+    {
+        if (Session.CurrentUser is null) return;
+
+        var nameTrimmed = _newGroupName.Trim();
+        if (string.IsNullOrWhiteSpace(nameTrimmed))
+        {
+            _errorMessage = "O nome do grupo é obrigatório.";
+            return;
+        }
+
+        if (nameTrimmed.Length > 50)
+        {
+            _errorMessage = "O nome do grupo deve ter no máximo 50 caracteres.";
+            return;
+        }
+
+        _saving = true;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            await Finance.CreateGroupAsync(nameTrimmed, Session.CurrentUser.Id);
+            _newGroupName = string.Empty;
+            await LoadGroupInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao criar grupo: " + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task AddMemberAsync()
+    {
+        if (_group is null || Session.CurrentUser is null) return;
+
+        var usernameTrimmed = _addUsername.Trim();
+        if (string.IsNullOrWhiteSpace(usernameTrimmed))
+        {
+            _errorMessage = "Digite um nome de usuário.";
+            return;
+        }
+
+        _saving = true;
+        _errorMessage = string.Empty;
+        _successMessage = string.Empty;
+
+        try
+        {
+            var error = await Finance.AddMemberToGroupAsync(_group.Id, usernameTrimmed, Session.CurrentUser.Id);
+            if (error is not null)
+            {
+                _errorMessage = error;
+            }
+            else
+            {
+                _addUsername = string.Empty;
+                _successMessage = $"Membro @{usernameTrimmed} adicionado com sucesso!";
+                await LoadGroupInfoAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao adicionar membro: " + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task RemoveMemberAsync(int memberUserId)
+    {
+        if (_group is null || Session.CurrentUser is null) return;
+
+        _saving = true;
+        try
+        {
+            await Finance.RemoveMemberFromGroupAsync(_group.Id, memberUserId, Session.CurrentUser.Id);
+            await LoadGroupInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao remover membro: " + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task LeaveGroupAsync()
+    {
+        if (_group is null || Session.CurrentUser is null) return;
+
+        _saving = true;
+        try
+        {
+            await Finance.RemoveMemberFromGroupAsync(_group.Id, Session.CurrentUser.Id, Session.CurrentUser.Id);
+            await LoadGroupInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao sair do grupo: " + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteGroupAsync()
+    {
+        if (_group is null || Session.CurrentUser is null) return;
+
+        var confirmed = await App.Current!.Windows[0].Page!.DisplayAlert(
+            "Excluir Grupo",
+            "Tem certeza que deseja excluir o grupo? As transações dos outros membros não serão apagadas, mas o vínculo com o grupo será removido permanentemente.",
+            "Sim, Excluir",
+            "Cancelar"
+        );
+
+        if (!confirmed) return;
+
+        _saving = true;
+        try
+        {
+            await Finance.DeleteGroupAsync(_group.Id, Session.CurrentUser.Id);
+            await LoadGroupInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao excluir grupo: " + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task HandleCreateGroupKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await CreateGroupAsync();
+        }
+    }
+
+    private async Task HandleAddMemberKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddMemberAsync();
+        }
+    }
+}

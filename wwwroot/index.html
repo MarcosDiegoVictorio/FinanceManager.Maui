@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>FinanceVictorios</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/finance.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="FinanceManager.Maui.styles.css" />
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <div class="status-bar-safe-area"></div>
+
+    <div id="app">Loading...</div>
+
+    <div id="blazor-error-ui" data-nosnippet>
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+    <script>
+        window.renderPieChart = function (canvasId, labels, data) {
+            var ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+
+            if (!window.myCharts) {
+                window.myCharts = {};
+            }
+
+            if (window.myCharts[canvasId]) {
+                window.myCharts[canvasId].destroy();
+            }
+
+            var colors = [
+                '#3b82f6', // blue
+                '#8b5cf6', // purple
+                '#ec4899', // pink
+                '#f97316', // orange
+                '#10b981', // green
+                '#06b6d4', // cyan
+                '#f59e0b', // amber
+                '#6366f1'  // indigo
+            ];
+
+            window.myCharts[canvasId] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length).map(c => c + 'cc'),
+                        borderColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        hoverOffset: 12
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#94a3b8',
+                                font: {
+                                    family: "'Segoe UI', system-ui, sans-serif",
+                                    size: 11
+                                },
+                                padding: 16,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#f1f5f9',
+                            borderColor: 'rgba(255, 255, 255, 0.08)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: true,
+                            boxWidth: 8,
+                            boxHeight: 8,
+                            boxPadding: 4,
+                            callbacks: {
+                                label: function (context) {
+                                    var value = context.raw || 0;
+                                    return ' ' + context.label + ': R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%',
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 10
+                        }
+                    }
+                }
+            });
+        };
+    </script>
+
+</body>
+
+</html>

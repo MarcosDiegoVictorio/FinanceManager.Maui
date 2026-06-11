@@ -1,0 +1,188 @@
+@page "/categories"
+@inject FinanceService Finance
+@inject Services.SessionService Session
+@inject NavigationManager Nav
+@using FinanceManager.Maui.Models
+
+<div class="finance-app">
+    <header class="app-header animate-fade-in">
+        <h1>Categorias</h1>
+        <p class="subtitle">Personalize suas divisões de gastos e receitas</p>
+    </header>
+
+    <section class="form-card card animate-slide-up">
+        <h3>Nova Categoria</h3>
+        <div class="form-grid">
+            <div class="field full">
+                <label>Nome da Categoria</label>
+                <input type="text" @bind="_newCategoryName" @bind:event="oninput" @onkeydown="HandleKeyDown" class="input" placeholder="Ex: Petshop, Mercado, Lazer..." />
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <span class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;">@_errorMessage</span>
+                }
+            </div>
+        </div>
+        <button type="button" class="btn-primary" @onclick="AddCategoryAsync" disabled="@_saving">
+            @(_saving ? "Salvando..." : "Adicionar Categoria")
+        </button>
+    </section>
+
+    <section class="list-card card animate-slide-up" style="animation-delay: 0.1s;">
+        <h3>Suas Categorias</h3>
+        @if (_categories.Count == 0)
+        {
+            <p class="empty">Nenhuma categoria cadastrada.</p>
+        }
+        else
+        {
+            <ul class="category-list">
+                @foreach (var cat in _categories)
+                {
+                    <li class="category-item animate-fade-in">
+                        <span class="cat-name">@cat.Name</span>
+                        @if (cat.Name.ToLower() != "geral")
+                        {
+                            <button type="button" class="btn-delete" @onclick="() => DeleteCategoryAsync(cat.Id)" title="Excluir">×</button>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</div>
+
+<style>
+    .category-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .category-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .category-item:last-child {
+        border-bottom: none;
+    }
+
+    .cat-name {
+        font-size: 0.95rem;
+        color: #f8fafc;
+        font-weight: 500;
+    }
+
+    /* Reuse app animations */
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+    .animate-slide-up {
+        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+</style>
+
+@code {
+    private List<Category> _categories = [];
+    private string _newCategoryName = string.Empty;
+    private string _errorMessage = string.Empty;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.CurrentUser is null)
+        {
+            Nav.NavigateTo("login");
+            return;
+        }
+        await LoadCategoriesAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        if (Session.CurrentUser is null) return;
+        var list = await Finance.GetCategoriesByUserAsync(Session.CurrentUser.Id);
+        _categories = list.ToList();
+    }
+
+    private async Task AddCategoryAsync()
+    {
+        if (Session.CurrentUser is null) return;
+        
+        var nameTrimmed = _newCategoryName.Trim();
+        if (string.IsNullOrWhiteSpace(nameTrimmed))
+        {
+            _errorMessage = "O nome da categoria não pode ser vazio.";
+            return;
+        }
+
+        if (nameTrimmed.Length > 30)
+        {
+            _errorMessage = "O nome deve ter no máximo 30 caracteres.";
+            return;
+        }
+
+        if (_categories.Any(c => c.Name.Equals(nameTrimmed, StringComparison.OrdinalIgnoreCase)))
+        {
+            _errorMessage = "Já existe uma categoria com este nome.";
+            return;
+        }
+
+        _saving = true;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            await Finance.SaveCategoryAsync(new Category
+            {
+                UserId = Session.CurrentUser.Id,
+                Name = nameTrimmed
+            });
+            _newCategoryName = string.Empty;
+            await LoadCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao salvar categoria: " + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddCategoryAsync();
+        }
+    }
+
+    private async Task DeleteCategoryAsync(int id)
+    {
+        if (Session.CurrentUser is null) return;
+
+        try
+        {
+            await Finance.DeleteCategoryAsync(Session.CurrentUser.Id, id);
+            await LoadCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao excluir categoria: " + ex.Message;
+        }
+    }
+}

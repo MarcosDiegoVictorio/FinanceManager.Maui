@@ -1,0 +1,14 @@
+.page {
+    display: flex;
+    flex-direction: column;
+}
+
+.main-layout, .main-layout-unauth {
+    min-height: 100vh;
+    background: #0f1419;
+    flex-grow: 1;
+}
+
+.main-layout {
+    padding-top: 60px; /* Espaço para a barra superior fixa do menu */
+}

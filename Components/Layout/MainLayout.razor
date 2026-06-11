@@ -1,0 +1,80 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject Services.SessionService Session
+@inject NavigationManager Nav
+
+<div class="page">
+    @if (IsAuthenticated)
+    {
+        <NavMenu />
+
+        <main class="main-layout" @onpointerdown="RefreshSessionActivity" @onkeydown="RefreshSessionActivity">
+            @Body
+        </main>
+    }
+    else
+    {
+        <main class="main-layout-unauth">
+            @Body
+        </main>
+    }
+</div>
+
+@code {
+    private System.Threading.Timer? _sessionTimer;
+
+    private bool IsAuthenticated => Session.CurrentUser != null && Session.Token != null;
+
+    protected override void OnInitialized()
+    {
+        // Periodic check to verify session timeout (every 5 seconds)
+        _sessionTimer = new System.Threading.Timer(_ => 
+        {
+            InvokeAsync(() =>
+            {
+                if (IsAuthenticated)
+                {
+                    // ValidateSession checks if 1 minute of inactivity passed.
+                    // If it did, it clears the session and returns false.
+                    if (!Session.ValidateSession())
+                    {
+                        Nav.NavigateTo("login");
+                        StateHasChanged();
+                    }
+                }
+            });
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    protected override void OnParametersSet()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        var isAuthPage = relativePath.Equals("login", StringComparison.OrdinalIgnoreCase) || 
+                         relativePath.Equals("register", StringComparison.OrdinalIgnoreCase);
+
+        if (!IsAuthenticated && !isAuthPage)
+        {
+            Nav.NavigateTo("login");
+        }
+        else if (IsAuthenticated)
+        {
+            // Update last activity since they navigated
+            Session.RefreshActivity();
+            
+            if (isAuthPage)
+            {
+                Nav.NavigateTo("");
+            }
+        }
+    }
+
+    private void RefreshSessionActivity()
+    {
+        Session.RefreshActivity();
+    }
+
+    public void Dispose()
+    {
+        _sessionTimer?.Dispose();
+    }
+}

@@ -1,0 +1,261 @@
+/* ==========================================================================
+   Estilos da Barra Superior e do Menu Gaveta (Drawer)
+   ========================================================================== */
+
+/* --- Top Navbar --- */
+.top-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: rgba(13, 19, 31, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-left {
+    display: flex;
+    align-items: center;
+}
+
+.menu-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.menu-toggle-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #f1f5f9;
+}
+
+.menu-toggle-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+.brand-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    margin-left: 0.75rem;
+}
+
+.brand-icon {
+    font-size: 1.6rem;
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+.brand-link:hover .brand-icon {
+    transform: scale(1.15) rotate(10deg);
+}
+
+.brand-text {
+    font-size: 1.15rem;
+    font-weight: 800;
+    background: linear-gradient(to right, #3b82f6, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+}
+
+.user-greeting {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* --- Backdrop Overlay --- */
+.drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1080;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.drawer-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* --- Slide-out Drawer --- */
+.sidebar-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background-color: #0d131f;
+    z-index: 1090;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+.sidebar-drawer.open {
+    transform: translateX(0);
+}
+
+.drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.drawer-header .brand-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.drawer-close-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.drawer-close-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #f1f5f9;
+}
+
+.drawer-close-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* --- Drawer Menu --- */
+.drawer-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex-grow: 1;
+    padding: 1.25rem 0.75rem;
+}
+
+.nav-item {
+    width: 100%;
+}
+
+.nav-item ::deep .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: #94a3b8;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+    font-weight: 500;
+}
+
+.nav-item ::deep .nav-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #94a3b8;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.nav-item ::deep .nav-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.nav-item ::deep .nav-text {
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+/* Active Link State */
+.nav-item ::deep .nav-link.active {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #60a5fa !important;
+}
+
+.nav-item ::deep .nav-link.active .nav-icon {
+    color: #60a5fa;
+    transform: scale(1.05);
+}
+
+.nav-item ::deep .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 3px;
+    background-color: #3b82f6;
+    border-radius: 0 4px 4px 0;
+}
+
+.nav-item ::deep .nav-link:hover:not(.active) {
+    background-color: rgba(255, 255, 255, 0.04);
+    color: #f1f5f9;
+}
+
+.nav-item ::deep .nav-link:hover:not(.active) .nav-icon {
+    color: #f1f5f9;
+}
+
+.nav-logout {
+    margin-top: auto;
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 480px) {
+    .user-greeting {
+        display: none; /* Esconde saudação em telas muito pequenas */
+    }
+}
