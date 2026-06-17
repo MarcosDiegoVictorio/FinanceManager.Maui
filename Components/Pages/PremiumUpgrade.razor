@@ -1,0 +1,531 @@
+@page "/premium-upgrade"
+@inject Services.FinanceService Finance
+@inject Services.SessionService Session
+@inject NavigationManager Nav
+@inject IJSRuntime JSRuntime
+@using FinanceManager.Maui.Models
+
+<div class="finance-app">
+    <div class="upgrade-container animate-fade-in">
+
+        @if (_isSuccess)
+        {
+            <!-- Estado de Assinatura Ativa (Sucesso) -->
+            <div class="success-card card animate-slide-up">
+                <div class="success-icon">✨🏆✨</div>
+                <h2>Parabéns! 🎉</h2>
+                <p>Você agora é um membro <strong>Premium</strong> do FinanceVictorios!</p>
+                <div class="premium-details">
+                    <p class="expiry-info">Sua assinatura está ativa e válida até: <strong>@_expiryDate?.ToString("dd/MM/yyyy")</strong></p>
+                </div>
+                <button class="btn-upgrade btn-home" @onclick="GoHome">
+                    <span>Ir para o Dashboard</span>
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Cabeçalho de Impacto -->
+            <header class="upgrade-header animate-slide-up">
+                <div class="header-gradient">
+                    <span class="premium-tag">👑 PLANO PREMIUM</span>
+                    <h1>Seja Premium e Domine Suas Finanças 🚀</h1>
+                    <p class="subtitle">Desbloqueie o poder total do FinanceVictorio por apenas uma assinatura mensal.</p>
+                </div>
+            </header>
+
+            <!-- Lista de Benefícios Estilizados -->
+            <section class="benefits-section">
+                
+                <div class="benefit-card card animate-slide-up" style="animation-delay: 0.1s;">
+                    <div class="benefit-icon-container visual">
+                        <span class="benefit-icon">📊</span>
+                    </div>
+                    <div class="benefit-text">
+                        <h3>Visualização Avançada</h3>
+                        <p><strong>Gráficos Completos e Comparativos:</strong> Monitore a evolução do seu patrimônio mês a mês sem limites.</p>
+                    </div>
+                </div>
+
+                <div class="benefit-card card animate-slide-up" style="animation-delay: 0.2s;">
+                    <div class="benefit-icon-container export">
+                        <span class="benefit-icon">📁</span>
+                    </div>
+                    <div class="benefit-text">
+                        <h3>Exportação Profissional</h3>
+                        <p><strong>Relatórios em Excel (.xlsx):</strong> Exporte seus lançamentos com um clique e analise seus gastos onde quiser.</p>
+                    </div>
+                </div>
+
+                <div class="benefit-card card animate-slide-up" style="animation-delay: 0.3s;">
+                    <div class="benefit-icon-container family">
+                        <span class="benefit-icon">👥</span>
+                    </div>
+                    <div class="benefit-text">
+                        <h3>Finanças em Família</h3>
+                        <p><strong>Grupos Compartilhados:</strong> Monitore os gastos com seu cônjuge ou sócios com total controle de privacidade.</p>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Seção de Preço Simulado & CTA -->
+            <section class="pricing-card card animate-slide-up" style="animation-delay: 0.4s;">
+                <div class="pricing-badge">PROMOÇÃO LIMITADA</div>
+                
+                <div class="pricing-price">
+                    <span class="price-currency">R$</span>
+                    <span class="price-val">9,90</span>
+                    <span class="price-lbl">/ mês</span>
+                </div>
+                
+                <p class="pricing-disclaimer">Assinatura fictícia para fins de simulação e teste no aplicativo local.</p>
+                
+                <button class="btn-upgrade pulse" @onclick="AjustarParaPremium" disabled="@_processing">
+                    @if (_processing)
+                    {
+                        <span class="spinner"></span> <span>Ativando...</span>
+                    }
+                    else
+                    {
+                        <span>Quero ser Premium</span>
+                    }
+                </button>
+            </section>
+
+            <!-- Botão de Voltar -->
+            <div class="back-action animate-slide-up" style="animation-delay: 0.5s;">
+                <button class="btn-back" @onclick="GoHome">Voltar ao Dashboard</button>
+            </div>
+        }
+
+    </div>
+</div>
+
+<style>
+    .upgrade-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    /* Cabeçalho de Impacto */
+    .upgrade-header {
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .header-gradient {
+        background: linear-gradient(135deg, #2e1065 0%, #1e1b4b 60%, #1d4ed8 100%);
+        padding: 2.25rem 1.5rem;
+        text-align: center;
+        position: relative;
+    }
+
+    .header-gradient::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.25), transparent 70%);
+        pointer-events: none;
+    }
+
+    .premium-tag {
+        display: inline-block;
+        background: linear-gradient(90deg, #f59e0b, #eab308);
+        color: #1e1b4b;
+        font-size: 0.72rem;
+        font-weight: 800;
+        padding: 0.3rem 0.8rem;
+        border-radius: 50px;
+        margin-bottom: 0.75rem;
+        letter-spacing: 0.05em;
+        box-shadow: 0 4px 12px rgba(234, 179, 8, 0.35);
+    }
+
+    .header-gradient h1 {
+        font-size: 1.5rem;
+        font-weight: 850;
+        line-height: 1.25;
+        margin: 0 0 0.6rem;
+        color: #ffffff;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .header-gradient .subtitle {
+        font-size: 0.88rem;
+        color: #cbd5e1;
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    /* Lista de Benefícios */
+    .benefits-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .benefit-card {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        padding: 1rem 1.15rem !important;
+        background: var(--surface);
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .benefit-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(99, 102, 241, 0.25) !important;
+    }
+
+    .benefit-icon-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        flex-shrink: 0;
+    }
+
+    .benefit-icon-container.visual {
+        background: rgba(59, 130, 246, 0.12);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .benefit-icon-container.export {
+        background: rgba(34, 197, 94, 0.12);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .benefit-icon-container.family {
+        background: rgba(139, 92, 246, 0.12);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .benefit-icon {
+        font-size: 1.35rem;
+    }
+
+    .benefit-text {
+        flex-grow: 1;
+    }
+
+    .benefit-text h3 {
+        margin: 0 0 0.15rem 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    .benefit-text p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        line-height: 1.4;
+    }
+
+    .benefit-text strong {
+        color: #f8fafc;
+    }
+
+    /* Seção de Preço Simulado & CTA */
+    .pricing-card {
+        text-align: center;
+        padding: 1.75rem 1.25rem !important;
+        background: linear-gradient(180deg, var(--surface) 0%, rgba(26, 35, 50, 0.8) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        position: relative;
+        margin-top: 0.5rem;
+    }
+
+    .pricing-badge {
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ef4444;
+        color: #ffffff;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        letter-spacing: 0.05em;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
+
+    .pricing-price {
+        margin: 0.5rem 0 0.2rem 0;
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+    }
+
+    .price-currency {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #a78bfa;
+        margin-right: 0.2rem;
+    }
+
+    .price-val {
+        font-size: 2.8rem;
+        font-weight: 900;
+        color: #ffffff;
+        letter-spacing: -0.02em;
+        background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .price-lbl {
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        margin-left: 0.25rem;
+    }
+
+    .pricing-disclaimer {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin: 0 0 1.25rem 0;
+    }
+
+    /* Botão Upgrade com Pulsação e Sombra */
+    .btn-upgrade {
+        width: 100%;
+        background: linear-gradient(90deg, #6366f1 0%, #3b82f6 50%, #4f46e5 100%);
+        background-size: 200% auto;
+        color: #ffffff;
+        font-weight: 750;
+        font-size: 1.05rem;
+        border: none;
+        padding: 0.85rem;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35);
+        transition: all 0.3s ease;
+    }
+
+    .btn-upgrade:hover:not(:disabled) {
+        background-position: right center;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 22px rgba(99, 102, 241, 0.5);
+    }
+
+    .btn-upgrade:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 3px 10px rgba(99, 102, 241, 0.35);
+    }
+
+    .btn-upgrade:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+
+    /* Tela de Sucesso */
+    .success-card {
+        text-align: center;
+        padding: 3rem 2rem !important;
+        background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
+        border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    }
+
+    .success-icon {
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
+        animation: float-effect 2.5s ease-in-out infinite;
+    }
+
+    .premium-details {
+        background: rgba(255, 255, 255, 0.04);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin: 1.25rem 0 2rem 0;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .expiry-info {
+        font-size: 0.85rem;
+        color: #a7f3d0;
+        margin: 0;
+    }
+
+    .expiry-info strong {
+        color: #ffffff;
+    }
+
+    .btn-home {
+        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 4px 18px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-home:hover {
+        box-shadow: 0 6px 22px rgba(16, 185, 129, 0.5);
+    }
+
+    /* Efeito de Pulsação CSS */
+    .pulse {
+        animation: pulse-glow 2s infinite;
+    }
+
+    @@keyframes pulse-glow {
+        0% {
+            box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.45);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+        }
+    }
+
+    /* Ação Voltar */
+    .back-action {
+        text-align: center;
+        margin-top: 0.25rem;
+    }
+
+    .btn-back {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: underline;
+        padding: 0.5rem;
+        transition: color 0.2s ease;
+    }
+
+    .btn-back:hover {
+        color: #ffffff;
+    }
+
+    /* Spinner */
+    .spinner {
+        display: inline-block;
+        width: 1.2rem;
+        height: 1.2rem;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #ffffff;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Animações */
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    .animate-slide-up {
+        opacity: 0;
+        animation: slideUp 0.5s ease-out forwards;
+    }
+
+    @@keyframes float-effect {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    private bool _processing;
+    private bool _isSuccess;
+    private DateTime? _expiryDate;
+
+    protected override void OnInitialized()
+    {
+        if (Session.CurrentUser is null)
+        {
+            Nav.NavigateTo("login");
+            return;
+        }
+
+        if (Session.CurrentUser.IsPremium)
+        {
+            _isSuccess = true;
+            _expiryDate = Session.CurrentUser.PremiumUntil;
+        }
+    }
+
+    private async Task AjustarParaPremium()
+    {
+        if (Session.CurrentUser is null) return;
+
+        _processing = true;
+        try
+        {
+            var user = Session.CurrentUser;
+            user.IsPremium = true;
+            user.PremiumUntil = DateTime.Now.AddMonths(1);
+
+            // Persistência no banco SQLite local
+            await Finance.UpdateUserAsync(user);
+
+            // Atualização da sessão atual para refletir o status imediatamente
+            Session.StartSession(user);
+
+            _expiryDate = user.PremiumUntil;
+            _isSuccess = true;
+
+            // Alerta visual de sucesso nativo
+            var page = App.Current?.Windows.FirstOrDefault()?.Page;
+            if (page is not null)
+            {
+                await page.DisplayAlertAsync("Premium Ativo", "Parabéns! Você agora é um membro Premium! 🎉", "OK");
+            }
+
+            // Redirecionamento de volta para o dashboard (/home)
+            Nav.NavigateTo("home");
+        }
+        catch (Exception ex)
+        {
+            var page = App.Current?.Windows.FirstOrDefault()?.Page;
+            if (page is not null)
+            {
+                await page.DisplayAlertAsync("Erro", $"Erro ao processar ativação Premium: {ex.Message}", "OK");
+            }
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    private void GoHome()
+    {
+        Nav.NavigateTo("home");
+    }
+}

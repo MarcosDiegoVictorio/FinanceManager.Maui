@@ -11,6 +11,14 @@
         <p class="subtitle">Novo Lançamento e Histórico</p>
     </header>
 
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="error-banner card animate-slide-up">
+            <span class="error-text">⚠️ @_errorMessage</span>
+            <button type="button" class="btn-retry" @onclick="ReloadAsync">Tentar Novamente</button>
+        </div>
+    }
+
     <section class="dashboard card">
         <div class="dashboard-nav">
             <button type="button" class="btn-icon" @onclick="PreviousMonth" aria-label="Mês anterior">‹</button>
@@ -18,7 +26,16 @@
             <button type="button" class="btn-icon" @onclick="NextMonth" aria-label="Próximo mês">›</button>
         </div>
 
-        @if (_dashboard is not null)
+        @if (_isLoading)
+        {
+            <div style="height: 60px; display: flex; gap: 1rem; width: 100%; margin-top: 1rem;">
+                <div class="skeleton" style="flex: 1; height: 50px; border-radius: 6px;"></div>
+                <div class="skeleton" style="flex: 1; height: 50px; border-radius: 6px;"></div>
+                <div class="skeleton" style="flex: 1; height: 50px; border-radius: 6px;"></div>
+                <div class="skeleton" style="flex: 1; height: 50px; border-radius: 6px;"></div>
+            </div>
+        }
+        else if (_dashboard is not null)
         {
             <div class="stats-grid animate-fade-in">
                 <div class="stat">
@@ -43,6 +60,12 @@
 
     <section class="form-card card">
         <h3>Novo lançamento</h3>
+        @if (!string.IsNullOrEmpty(_successMessage))
+        {
+            <div class="success-banner animate-fade-in">
+                ✨ @_successMessage
+            </div>
+        }
         <EditForm Model="_form" OnValidSubmit="SaveAsync">
             <DataAnnotationsValidator />
             <div class="form-grid">
@@ -110,7 +133,14 @@
 
     <section class="list-card card">
         <h3>Lançamentos</h3>
-        @if (_transactions.Count == 0)
+        @if (_isLoading)
+        {
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+                <div class="skeleton" style="width: 100%; height: 55px; border-radius: 8px;"></div>
+                <div class="skeleton" style="width: 100%; height: 55px; border-radius: 8px;"></div>
+            </div>
+        }
+        else if (_transactions.Count == 0)
         {
             <p class="empty">Nenhum lançamento neste mês.</p>
         }
@@ -211,6 +241,69 @@
         background: var(--success);
         color: white;
     }
+
+    /* Skeleton Loader CSS */
+    .skeleton {
+        background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+        background-size: 200% 100%;
+        animation: loading-pulse 1.5s infinite ease-in-out;
+        border-radius: 6px;
+        display: inline-block;
+    }
+
+    @@keyframes loading-pulse {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    /* Error Banner CSS */
+    .error-banner {
+        background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        padding: 0.75rem 1.25rem !important;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .error-text {
+        color: #fee2e2;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .btn-retry {
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        border: none;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-retry:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Success Banner CSS */
+    .success-banner {
+        background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+        border: 1px solid rgba(52, 211, 153, 0.3);
+        color: #ecfdf5;
+        padding: 0.75rem 1.25rem;
+        border-radius: 8px;
+        margin-bottom: 1.25rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(4, 120, 87, 0.2);
+    }
 </style>
 
 @code {
@@ -224,13 +317,31 @@
     private readonly TransactionForm _form = new();
     private bool _saving;
 
+    private bool _isLoading;
+    private string? _errorMessage;
+    private string? _successMessage;
+
     protected override async Task OnInitializedAsync()
     {
         _selectedMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         _form.Date = _selectedMonth;
-        await LoadCategoriesAsync();
-        await LoadGroupInfoAsync();
-        await ReloadAsync();
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            await LoadCategoriesAsync();
+            await LoadGroupInfoAsync();
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao inicializar dados. Tente novamente.";
+            Console.WriteLine($"Erro no OnInitializedAsync da MainPage: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private async Task LoadGroupInfoAsync()
@@ -261,8 +372,26 @@
     private async Task ReloadAsync()
     {
         if (Session.CurrentUser is null) return;
-        _dashboard = await Finance.GetDashboardAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month);
-        _transactions = (await Finance.GetByMonthAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month)).ToList();
+        
+        _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            _dashboard = await Finance.GetDashboardAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month);
+            _transactions = (await Finance.GetByMonthAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Não foi possível carregar os lançamentos. Tente novamente.";
+            Console.WriteLine($"Erro ao carregar lançamentos: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task SaveAsync()
@@ -272,6 +401,7 @@
             return;
 
         _saving = true;
+        _errorMessage = null;
         try
         {
             await Finance.SaveTransactionAsync(new Transaction
@@ -293,19 +423,44 @@
             _form.IsIncome = previousType; // preserve type choice
             _form.Category = _categories.Any(c => c.Name == "Geral") ? "Geral" : (_categories.FirstOrDefault()?.Name ?? "Geral");
             
+            _successMessage = "Lançamento efetuado com sucesso!";
+            StateHasChanged();
+            
             await ReloadAsync();
+
+            // success message vanishes after 3 seconds
+            _ = Task.Delay(3000).ContinueWith(_ =>
+            {
+                _successMessage = null;
+                InvokeAsync(StateHasChanged);
+            });
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao tentar salvar o lançamento. Tente novamente.";
+            Console.WriteLine($"Erro ao salvar transação: {ex.Message}");
         }
         finally
         {
             _saving = false;
+            StateHasChanged();
         }
     }
 
     private async Task DeleteAsync(int id)
     {
         if (Session.CurrentUser is null) return;
-        await Finance.DeleteAsync(Session.CurrentUser.Id, id);
-        await ReloadAsync();
+        _errorMessage = null;
+        try
+        {
+            await Finance.DeleteAsync(Session.CurrentUser.Id, id);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao excluir o lançamento. Tente novamente.";
+            Console.WriteLine($"Erro ao excluir transação: {ex.Message}");
+        }
     }
 
     private async Task PreviousMonth()

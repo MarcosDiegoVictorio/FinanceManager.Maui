@@ -8,6 +8,9 @@ public static class MauiProgram
 {
 	public static MauiApp CreateMauiApp()
 	{
+		// Set EPPlus License to NonCommercial for EPPlus 8+
+		OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("FinanceVictorios");
+
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()

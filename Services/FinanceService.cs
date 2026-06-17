@@ -4,6 +4,11 @@ using SQLite;
 using Plugin.LocalNotification;
 using Plugin.LocalNotification.Core.Models;
 #endif
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
+using System.IO;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
+using Microsoft.Maui.Storage;
 
 namespace FinanceManager.Maui.Services;
 
@@ -534,6 +539,88 @@ public class FinanceService
             await Task.CompletedTask;
 #endif
         }
+    }
+
+    public async Task UpdateUserAsync(User user)
+    {
+        await InitializeAsync();
+        await _db!.UpdateAsync(user);
+    }
+
+    public async Task<string> ExportTransactionsToExcelAsync(int userId, int year, int month)
+    {
+        var transactions = await GetTransactionsByMonth(userId, year, month);
+
+        using (var package = new ExcelPackage())
+        {
+            var worksheet = package.Workbook.Worksheets.Add("Transações");
+
+            // Columns headers
+            string[] headers = { "Data", "Descrição", "Categoria", "Valor", "Parcelas", "Tipo" };
+            for (int col = 1; col <= headers.Length; col++)
+            {
+                var cell = worksheet.Cells[1, col];
+                cell.Value = headers[col - 1];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(15, 23, 42)); // #0f172a
+                cell.Style.Font.Color.SetColor(System.Drawing.Color.White);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            }
+
+            int row = 2;
+            foreach (var tx in transactions)
+            {
+                worksheet.Cells[row, 1].Value = tx.Date;
+                worksheet.Cells[row, 1].Style.Numberformat.Format = "dd/MM/yyyy";
+
+                worksheet.Cells[row, 2].Value = tx.Description;
+                worksheet.Cells[row, 3].Value = tx.Category;
+
+                // Income is positive, expense is negative
+                var val = tx.IsIncome ? tx.Value : -tx.Value;
+                worksheet.Cells[row, 4].Value = (double)val;
+                worksheet.Cells[row, 4].Style.Numberformat.Format = "R$ #,##0.00;[Red]R$ -#,##0.00";
+
+                worksheet.Cells[row, 5].Value = $"{tx.InstallmentNumber}/{tx.TotalInstallments}";
+                worksheet.Cells[row, 6].Value = tx.IsFixed ? "Fixo" : "Variável";
+
+                row++;
+            }
+
+            // Auto-fit columns
+            if (transactions.Count > 0)
+            {
+                worksheet.Cells[1, 1, row - 1, headers.Length].AutoFitColumns();
+            }
+            else
+            {
+                worksheet.Cells[1, 1, 1, headers.Length].AutoFitColumns();
+            }
+
+            string fileName = $"transacoes_{year}_{month:D2}.xlsx";
+            string filePath = Path.Combine(FileSystem.CacheDirectory, fileName);
+
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+
+            var fileInfo = new FileInfo(filePath);
+            await package.SaveAsAsync(fileInfo);
+
+            return filePath;
+        }
+    }
+
+    public async Task ExportAndShareTransactionsAsync(int userId, int year, int month)
+    {
+        var filePath = await ExportTransactionsToExcelAsync(userId, year, month);
+        await Share.Default.RequestAsync(new ShareFileRequest
+        {
+            Title = $"Exportar Transações - {month:D2}/{year}",
+            File = new ShareFile(filePath)
+        });
     }
 }
 

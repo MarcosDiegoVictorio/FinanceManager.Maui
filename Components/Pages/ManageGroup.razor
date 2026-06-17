@@ -346,7 +346,9 @@
     {
         if (_group is null || Session.CurrentUser is null) return;
 
-        var confirmed = await App.Current!.Windows[0].Page!.DisplayAlert(
+        var page = App.Current?.Windows.FirstOrDefault()?.Page;
+        if (page is null) return;
+        var confirmed = await page.DisplayAlertAsync(
             "Excluir Grupo",
             "Tem certeza que deseja excluir o grupo? As transações dos outros membros não serão apagadas, mas o vínculo com o grupo será removido permanentemente.",
             "Sim, Excluir",

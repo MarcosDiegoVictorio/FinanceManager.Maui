@@ -1,0 +1,53 @@
+<svg viewBox="0 0 1200 1500" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(390,150)"><g transform="scale(2.1)">
+    <defs>
+      <linearGradient id="g-tl-lp" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#cfeaff"/>
+        <stop offset="100%" stop-color="#8fc8f8"/>
+      </linearGradient>
+      <linearGradient id="g-tr-lp" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#7fb9f2"/>
+        <stop offset="100%" stop-color="#4a8de0"/>
+      </linearGradient>
+      <linearGradient id="g-bl-lp" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#4a86dd"/>
+        <stop offset="100%" stop-color="#2c5cc4"/>
+      </linearGradient>
+      <linearGradient id="g-br-lp" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#23459e"/>
+        <stop offset="100%" stop-color="#0e1f5e"/>
+      </linearGradient>
+      <filter id="arrow-glow-lp" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+
+    <!-- facets -->
+    <polygon points="72,36 100,36 100,79 26,79" fill="url(#g-tl-lp)"/>
+    <polygon points="100,36 128,36 174,79 100,79" fill="url(#g-tr-lp)"/>
+    <polygon points="26,79 100,79 100,190" fill="url(#g-bl-lp)"/>
+    <polygon points="100,79 174,79 100,190" fill="url(#g-br-lp)"/>
+
+    <!-- facet edges -->
+    <g stroke="#eaf6ff" stroke-width="1.4" stroke-opacity="0.55" fill="none" stroke-linejoin="round">
+      <polygon points="72,36 128,36 174,79 100,190 26,79"/>
+      <line x1="100" y1="36" x2="100" y2="190"/>
+      <line x1="26" y1="79" x2="174" y2="79"/>
+    </g>
+
+    <!-- growth arrow -->
+    <g filter="url(#arrow-glow-lp)">
+      <path d="M44,148 L80,110 L99,127 L142,62" fill="none" stroke="#ffffff" stroke-width="13"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <polygon points="123,55 158,48 148,84" fill="#ffffff"/>
+    </g>
+  </g></g>
+  <text x="600" y="765" text-anchor="middle" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="96" letter-spacing="-1">
+    <tspan fill="#ffffff">Finance</tspan><tspan fill="#4f8ff7">Victórios</tspan>
+  </text>
+  <text x="600" y="825" text-anchor="middle" font-family="Poppins, Arial, sans-serif" font-weight="500" font-size="27" letter-spacing="9" fill="#8ea3c9">SEU FUTURO. SUAS REGRAS.</text>
+</svg>
