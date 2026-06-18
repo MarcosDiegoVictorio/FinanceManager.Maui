@@ -26,6 +26,13 @@ public static class MauiProgram
 		builder.Services.AddSingleton<SessionService>();
 		builder.Services.AddSingleton<AuthService>();
 
+		// Configure HttpClient with loopback address for Android emulator or localhost for Windows/iOS
+		var baseAddress = DeviceInfo.Platform == DevicePlatform.Android 
+			? "http://10.0.2.2:5000" 
+			: "http://localhost:5000";
+		builder.Services.AddSingleton(new HttpClient { BaseAddress = new Uri(baseAddress) });
+		builder.Services.AddSingleton<ApiService>();
+
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();
 		builder.Logging.AddDebug();

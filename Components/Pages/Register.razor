@@ -1,5 +1,5 @@
 @page "/register"
-@inject Services.AuthService Auth
+@inject Services.ApiService Api
 @inject NavigationManager Nav
 @using FinanceManager.Maui.Models
 
@@ -271,14 +271,15 @@
 
         try
         {
-            var user = new User
+            var dto = new UserRegisterDto
             {
                 Name = _registerModel.Name.Trim(),
                 BirthDate = _registerModel.BirthDate,
-                Username = _registerModel.Username.Trim()
+                Username = _registerModel.Username.Trim(),
+                Password = _registerModel.Password
             };
 
-            var result = await Auth.RegisterUserAsync(user, _registerModel.Password);
+            var result = await Api.RegisterAsync(dto);
             if (result.Success)
             {
                 _success = true;

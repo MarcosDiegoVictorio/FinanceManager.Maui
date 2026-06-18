@@ -1,5 +1,5 @@
 @page "/login"
-@inject Services.AuthService Auth
+@inject Services.ApiService Api
 @inject NavigationManager Nav
 
 <div class="login-container">
@@ -225,10 +225,10 @@
 
         try
         {
-            var result = await Auth.LoginAsync(_loginModel.Username.Trim(), _loginModel.Password);
+            var result = await Api.LoginAsync(_loginModel.Username.Trim(), _loginModel.Password);
             if (result.Success)
             {
-                Nav.NavigateTo("");
+                Nav.NavigateTo("home");
             }
             else
             {

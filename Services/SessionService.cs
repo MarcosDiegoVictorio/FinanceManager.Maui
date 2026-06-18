@@ -10,8 +10,13 @@ public class SessionService
 
     public void StartSession(User user)
     {
+        StartSession(user, Guid.NewGuid().ToString());
+    }
+
+    public void StartSession(User user, string token)
+    {
         CurrentUser = user;
-        Token = Guid.NewGuid().ToString();
+        Token = token;
         LastActivityTime = DateTime.UtcNow;
     }
 
