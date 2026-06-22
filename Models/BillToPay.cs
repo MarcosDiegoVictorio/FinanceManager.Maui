@@ -18,4 +18,8 @@ public class BillToPay
     public DateTime DueDate { get; set; }
 
     public int DaysBeforeToNotify { get; set; }
+
+    public bool IsPaid { get; set; }
+
+    public DateTime? PaymentDate { get; set; }
 }

@@ -7,6 +7,7 @@
 @inject SessionService Session
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Nav
+@inject ApiService ApiService
 
 
 <div class="finance-app">
@@ -418,8 +419,8 @@
 
         try
         {
-            // Calculate Total Balance (Incomes - Expenses) up to the selected month
-            var allTransactions = await Finance.GetAllAsync(Session.CurrentUser.Id);
+            // Calculate Total Balance (Incomes - Expenses) up to the selected month using remote transactions
+            var allTransactions = await ApiService.GetTransactionsAsync();
             var limitDate = new DateTime(_selectedMonth.Year, _selectedMonth.Month, 1).AddMonths(1);
             var filteredTransactions = allTransactions.Where(t => t.Date < limitDate).ToList();
             
@@ -427,8 +428,8 @@
             var totalExpenses = filteredTransactions.Where(t => !t.IsIncome).Sum(t => t.Value);
             _totalBalance = totalIncomes - totalExpenses;
 
-            // Get current selected month transactions
-            var monthTransactions = await Finance.GetByMonthAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month);
+            // Get current selected month transactions from API
+            var monthTransactions = await ApiService.GetTransactionsAsync(_selectedMonth.Year, _selectedMonth.Month);
             _transactions = monthTransactions.ToList();
             _currentMonthIncomes = _transactions.Where(t => t.IsIncome).Sum(t => t.Value);
             _currentMonthExpenses = _transactions.Where(t => !t.IsIncome).Sum(t => t.Value);
@@ -472,7 +473,7 @@
         _errorMessage = null;
         try
         {
-            await Finance.DeleteAsync(Session.CurrentUser.Id, id);
+            await ApiService.DeleteTransactionAsync(id);
             await ReloadDataAsync();
         }
         catch (Exception ex)
@@ -521,8 +522,8 @@
             var currentYear = _selectedMonth.Year;
             var currentMonth = _selectedMonth.Month;
 
-            // Chama a exportação que gera a planilha e abre a folha de compartilhamento nativa no MAUI
-            await Finance.ExportAndShareTransactionsAsync(user.Id, currentYear, currentMonth);
+            // Chama a exportação que gera a planilha a partir dos dados remotos e abre o compartilhamento nativo no MAUI
+            await Finance.ExportAndShareTransactionsAsync(_transactions, currentYear, currentMonth);
         }
         catch (Exception ex)
         {

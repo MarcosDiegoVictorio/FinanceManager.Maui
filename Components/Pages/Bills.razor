@@ -2,6 +2,7 @@
 @inject FinanceService Finance
 @inject Services.SessionService Session
 @inject NavigationManager Nav
+@inject ApiService ApiService
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
 @using FinanceManager.Maui.Models
@@ -46,10 +47,15 @@
                     <InputDate @bind-Value="_form.DueDate" class="input" />
                     <ValidationMessage For="@(() => _form.DueDate)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
                 </div>
-                <div class="field full">
-                    <label>Notificar-me quantos dias antes?</label>
+                <div class="field">
+                    <label>Dias antes para notificar</label>
                     <input type="number" @bind="_form.DaysBeforeToNotify" class="input" min="0" max="365" />
                     <ValidationMessage For="@(() => _form.DaysBeforeToNotify)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
+                </div>
+                <div class="field">
+                    <label>Total de Parcelas</label>
+                    <InputNumber @bind-Value="_form.TotalInstallments" class="input" min="1" max="48" />
+                    <ValidationMessage For="@(() => _form.TotalInstallments)" class="validation-message" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.25rem; display: block;" />
                 </div>
             </div>
             <button type="submit" class="btn-primary" disabled="@_saving">
@@ -59,7 +65,32 @@
     </section>
 
     <section class="list-card card">
-        <h3>Minhas Contas Agendadas</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <h3 style="margin: 0;">Minhas Contas Agendadas</h3>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <select @bind="_statusFilter" @bind:after="ReloadAsync" class="input" style="width: auto; max-width: 140px; margin: 0; padding: 0.35rem 0.65rem; font-size: 0.85rem; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.08); color: var(--text);">
+                    <option value="">Todos Status</option>
+                    <option value="pendente">Pendentes</option>
+                    <option value="pago">Pagas</option>
+                </select>
+                <select @bind="_monthFilter" @bind:after="ReloadAsync" class="input" style="width: auto; max-width: 130px; margin: 0; padding: 0.35rem 0.65rem; font-size: 0.85rem; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.08); color: var(--text);">
+                    <option value="">Todos Meses</option>
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+            </div>
+        </div>
+
         @if (_isLoading)
         {
             <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
@@ -76,15 +107,26 @@
             <ul class="transaction-list">
                 @foreach (var item in _bills)
                 {
-                    <li class="transaction-item">
+                    <li class="transaction-item animate-fade-in">
                         <div class="tx-main">
-                            <strong>@item.Description</strong>
+                            <strong style="@(item.IsPaid ? "text-decoration: line-through; opacity: 0.6;" : "")">@item.Description</strong>
                             <span class="tx-category">
-                                Vence em: @item.DueDate.ToString("dd/MM/yyyy")
+                                @if (item.IsPaid)
+                                {
+                                    <span style="color: #4ade80; font-weight: bold;">✓ Paga</span>
+                                    if (item.PaymentDate.HasValue)
+                                    {
+                                        <span> em: @item.PaymentDate.Value.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span>Vence em: @item.DueDate.ToString("dd/MM/yyyy")</span>
+                                }
                             </span>
                         </div>
                         <div class="tx-meta">
-                            <span class="tx-value negative">
+                            <span class="tx-value negative" style="@(item.IsPaid ? "opacity: 0.6;" : "")">
                                 @item.Value.ToString("C", PtBr)
                             </span>
                             @if (item.DaysBeforeToNotify == 0)
@@ -96,7 +138,13 @@
                                 <span class="badge installment">Aviso: @item.DaysBeforeToNotify @(item.DaysBeforeToNotify == 1 ? "dia" : "dias") antes</span>
                             }
                         </div>
-                        <button type="button" class="btn-delete" @onclick="() => DeleteAsync(item.Id)" title="Excluir">×</button>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            @if (!item.IsPaid)
+                            {
+                                <button type="button" class="btn-pay" @onclick="() => PayAsync(item.Id)" title="Marcar como Paga">Pagar ✓</button>
+                            }
+                            <button type="button" class="btn-delete" @onclick="() => DeleteAsync(item.Id)" title="Excluir">×</button>
+                        </div>
                     </li>
                 }
             </ul>
@@ -142,6 +190,24 @@
         font-weight: 500;
     }
 
+    .btn-pay {
+        background: rgba(34, 197, 94, 0.12);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.25);
+        padding: 0.3rem 0.65rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-pay:hover {
+        background: #22c55e;
+        color: #0f1419;
+        border-color: #22c55e;
+    }
+
     .btn-retry {
         background: rgba(255, 255, 255, 0.15);
         color: #ffffff;
@@ -182,6 +248,9 @@
     private bool _isLoading;
     private string? _errorMessage;
     private string? _successMessage;
+
+    private string _statusFilter = string.Empty;
+    private string _monthFilter = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -224,7 +293,16 @@
 
         try
         {
-            _bills = (await Finance.GetBillsToPayAsync(Session.CurrentUser.Id)).ToList();
+            int? filterMonth = null;
+            if (int.TryParse(_monthFilter, out var parsedMonth))
+            {
+                filterMonth = parsedMonth;
+            }
+
+            _bills = await ApiService.GetBillsAsync(
+                string.IsNullOrEmpty(_statusFilter) ? null : _statusFilter, 
+                filterMonth
+            );
         }
         catch (Exception ex)
         {
@@ -248,13 +326,13 @@
         _errorMessage = null;
         try
         {
-            await Finance.SaveBillToPayAsync(new BillToPay
+            await ApiService.CreateBillAsync(new BillDto
             {
-                UserId = Session.CurrentUser.Id,
                 Description = _form.Description.Trim(),
                 Value = _form.Value.Value,
                 DueDate = _form.DueDate,
-                DaysBeforeToNotify = _form.DaysBeforeToNotify
+                DaysBeforeToNotify = _form.DaysBeforeToNotify,
+                TotalInstallments = _form.TotalInstallments
             });
 
             _form.Reset();
@@ -282,13 +360,29 @@
         }
     }
 
+    private async Task PayAsync(int id)
+    {
+        if (Session.CurrentUser is null) return;
+        _errorMessage = null;
+        try
+        {
+            await ApiService.MarkAsPaidAsync(id);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Erro ao marcar conta como paga. Tente novamente.";
+            Console.WriteLine($"Erro ao pagar conta: {ex.Message}");
+        }
+    }
+
     private async Task DeleteAsync(int id)
     {
         if (Session.CurrentUser is null) return;
         _errorMessage = null;
         try
         {
-            await Finance.DeleteBillToPayAsync(Session.CurrentUser.Id, id);
+            await ApiService.DeleteBillAsync(id);
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -313,12 +407,16 @@
         [Range(0, 365, ErrorMessage = "O número de dias deve ser entre 0 e 365.")]
         public int DaysBeforeToNotify { get; set; } = 1;
 
+        [Range(1, 48, ErrorMessage = "O número de parcelas deve ser entre 1 e 48.")]
+        public int TotalInstallments { get; set; } = 1;
+
         public void Reset()
         {
             Description = string.Empty;
             Value = null;
             DueDate = DateTime.Today;
             DaysBeforeToNotify = 1;
+            TotalInstallments = 1;
         }
     }
 }

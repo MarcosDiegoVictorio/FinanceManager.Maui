@@ -1,5 +1,5 @@
 @page "/premium-upgrade"
-@inject Services.FinanceService Finance
+@inject ApiService ApiService
 @inject Services.SessionService Session
 @inject NavigationManager Nav
 @inject IJSRuntime JSRuntime
@@ -487,28 +487,22 @@
         _processing = true;
         try
         {
-            var user = Session.CurrentUser;
-            user.IsPremium = true;
-            user.PremiumUntil = DateTime.Now.AddMonths(1);
-
-            // Persistência no banco SQLite local
-            await Finance.UpdateUserAsync(user);
-
-            // Atualização da sessão atual para refletir o status imediatamente
-            Session.StartSession(user);
-
-            _expiryDate = user.PremiumUntil;
-            _isSuccess = true;
-
-            // Alerta visual de sucesso nativo
-            var page = App.Current?.Windows.FirstOrDefault()?.Page;
-            if (page is not null)
+            var result = await ApiService.UpgradeToPremiumAsync();
+            if (result != null)
             {
-                await page.DisplayAlertAsync("Premium Ativo", "Parabéns! Você agora é um membro Premium! 🎉", "OK");
-            }
+                _expiryDate = result.User.PremiumUntil;
+                _isSuccess = true;
 
-            // Redirecionamento de volta para o dashboard (/home)
-            Nav.NavigateTo("home");
+                // Alerta visual de sucesso nativo
+                var page = App.Current?.Windows.FirstOrDefault()?.Page;
+                if (page is not null)
+                {
+                    await page.DisplayAlertAsync("Premium Ativo", "Parabéns! Você agora é um membro Premium! 🎉", "OK");
+                }
+
+                // Redirecionamento de volta para o dashboard (/home)
+                Nav.NavigateTo("home");
+            }
         }
         catch (Exception ex)
         {

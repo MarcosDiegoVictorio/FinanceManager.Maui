@@ -2,25 +2,56 @@
     "version": "0.2.0",
     "configurations": [
         {
-            // Use IntelliSense to find out which attributes exist for C# debugging
-            // Use hover for the description of the existing attributes
-            // For further information visit https://github.com/dotnet/vscode-csharp/blob/main/debugger-launchjson.md
+            "name": "FinanceManager.API",
+            "type": "dotnet",
+            "request": "launch",
+            "preLaunchTask": "build-api",
+            "program": "${workspaceFolder}/../FinanceManager.API/bin/Debug/net10.0/FinanceManager.API.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/../FinanceManager.API",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:5000"
+            },
+            "console": "internalConsole"
+        },
+        {
+            "name": "FinanceManager.Maui (Windows)",
+            "type": "dotnet",
+            "request": "launch",
+            "preLaunchTask": "build-maui-windows",
+            "program": "${workspaceFolder}/bin/Debug/net10.0-windows10.0.19041.0/win-x64/FinanceManager.Maui.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
+        {
             "name": ".NET Core Launch (console)",
-            "type": "coreclr",
+            "type": "dotnet",
             "request": "launch",
             "preLaunchTask": "build",
-            // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/bin/Debug/net10.0-ios/iossimulator-x64/FinanceManager.Maui.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
-            // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
             "stopAtEntry": false
         },
         {
             "name": ".NET Core Attach",
             "type": "coreclr",
-            "request": "attach"
+            "request": "attach",
+            "processId": "${command:pickProcess}"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "API + App Windows (Debug)",
+            "configurations": [
+                "FinanceManager.API",
+                "FinanceManager.Maui (Windows)"
+            ]
         }
     ]
 }

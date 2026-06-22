@@ -1,5 +1,5 @@
 @page "/group"
-@inject FinanceService Finance
+@inject ApiService ApiService
 @inject Services.SessionService Session
 @inject NavigationManager Nav
 @using FinanceManager.Maui.Models
@@ -207,10 +207,11 @@
         {
             if (Session.CurrentUser is null) return;
 
-            _group = await Finance.GetGroupForUserAsync(Session.CurrentUser.Id);
+            var groups = await ApiService.GetGroupsAsync();
+            _group = groups.FirstOrDefault();
             if (_group is not null)
             {
-                var membersList = await Finance.GetGroupMembersAsync(_group.Id);
+                var membersList = await ApiService.GetGroupMembersAsync(_group.Id);
                 _members = membersList.ToList();
                 
                 var admin = _members.FirstOrDefault(m => m.Id == _group.AdminUserId);
@@ -249,7 +250,7 @@
 
         try
         {
-            await Finance.CreateGroupAsync(nameTrimmed, Session.CurrentUser.Id);
+            await ApiService.CreateGroupAsync(nameTrimmed);
             _newGroupName = string.Empty;
             await LoadGroupInfoAsync();
         }
@@ -280,7 +281,7 @@
 
         try
         {
-            var error = await Finance.AddMemberToGroupAsync(_group.Id, usernameTrimmed, Session.CurrentUser.Id);
+            var error = await ApiService.AddMemberToGroupAsync(_group.Id, usernameTrimmed);
             if (error is not null)
             {
                 _errorMessage = error;
@@ -309,7 +310,7 @@
         _saving = true;
         try
         {
-            await Finance.RemoveMemberFromGroupAsync(_group.Id, memberUserId, Session.CurrentUser.Id);
+            await ApiService.RemoveMemberFromGroupAsync(_group.Id, memberUserId);
             await LoadGroupInfoAsync();
         }
         catch (Exception ex)
@@ -329,7 +330,7 @@
         _saving = true;
         try
         {
-            await Finance.RemoveMemberFromGroupAsync(_group.Id, Session.CurrentUser.Id, Session.CurrentUser.Id);
+            await ApiService.RemoveMemberFromGroupAsync(_group.Id, Session.CurrentUser.Id);
             await LoadGroupInfoAsync();
         }
         catch (Exception ex)
@@ -360,7 +361,7 @@
         _saving = true;
         try
         {
-            await Finance.DeleteGroupAsync(_group.Id, Session.CurrentUser.Id);
+            await ApiService.DeleteGroupAsync(_group.Id);
             await LoadGroupInfoAsync();
         }
         catch (Exception ex)

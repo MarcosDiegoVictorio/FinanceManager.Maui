@@ -550,7 +550,11 @@ public class FinanceService
     public async Task<string> ExportTransactionsToExcelAsync(int userId, int year, int month)
     {
         var transactions = await GetTransactionsByMonth(userId, year, month);
+        return await ExportTransactionsToExcelAsync(transactions, year, month);
+    }
 
+    public async Task<string> ExportTransactionsToExcelAsync(IReadOnlyList<Transaction> transactions, int year, int month)
+    {
         using (var package = new ExcelPackage())
         {
             var worksheet = package.Workbook.Worksheets.Add("Transações");
@@ -616,6 +620,16 @@ public class FinanceService
     public async Task ExportAndShareTransactionsAsync(int userId, int year, int month)
     {
         var filePath = await ExportTransactionsToExcelAsync(userId, year, month);
+        await Share.Default.RequestAsync(new ShareFileRequest
+        {
+            Title = $"Exportar Transações - {month:D2}/{year}",
+            File = new ShareFile(filePath)
+        });
+    }
+
+    public async Task ExportAndShareTransactionsAsync(IReadOnlyList<Transaction> transactions, int year, int month)
+    {
+        var filePath = await ExportTransactionsToExcelAsync(transactions, year, month);
         await Share.Default.RequestAsync(new ShareFileRequest
         {
             Title = $"Exportar Transações - {month:D2}/{year}",

@@ -1,6 +1,7 @@
 @page "/main"
 @inject FinanceService Finance
 @inject Services.SessionService Session
+@inject ApiService ApiService
 @using System.Globalization
 @using System.ComponentModel.DataAnnotations
 @using FinanceManager.Maui.Models
@@ -379,8 +380,19 @@
 
         try
         {
-            _dashboard = await Finance.GetDashboardAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month);
-            _transactions = (await Finance.GetByMonthAsync(Session.CurrentUser.Id, _selectedMonth.Year, _selectedMonth.Month)).ToList();
+            var monthTransactions = await ApiService.GetTransactionsAsync(_selectedMonth.Year, _selectedMonth.Month);
+            _transactions = monthTransactions.ToList();
+
+            _dashboard = new FinanceDashboard
+            {
+                Year = _selectedMonth.Year,
+                Month = _selectedMonth.Month,
+                TotalIncomes = _transactions.Where(t => t.IsIncome).Sum(t => t.Value),
+                TotalExpenses = _transactions.Where(t => !t.IsIncome).Sum(t => t.Value),
+                FixedTotal = _transactions.Where(t => t.IsFixed && !t.IsIncome).Sum(t => t.Value),
+                InstallmentTotal = _transactions.Where(t => t.TotalInstallments > 1 && !t.IsIncome).Sum(t => t.Value),
+                TransactionCount = _transactions.Count
+            };
         }
         catch (Exception ex)
         {
@@ -404,9 +416,8 @@
         _errorMessage = null;
         try
         {
-            await Finance.SaveTransactionAsync(new Transaction
+            await ApiService.CreateTransactionAsync(new TransactionDto
             {
-                UserId = Session.CurrentUser.Id,
                 Description = _form.Description.Trim(),
                 Value = _form.Value.Value,
                 Date = _form.Date ?? _selectedMonth,
@@ -453,7 +464,7 @@
         _errorMessage = null;
         try
         {
-            await Finance.DeleteAsync(Session.CurrentUser.Id, id);
+            await ApiService.DeleteTransactionAsync(id);
             await ReloadAsync();
         }
         catch (Exception ex)
