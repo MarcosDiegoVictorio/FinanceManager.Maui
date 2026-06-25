@@ -28,13 +28,15 @@ public static class MauiProgram
 
 		// Configure HttpClient with loopback address for Android emulator or localhost for Windows/iOS
 #if WINDOWS
-		var baseAddress = "http://localhost:5000";
+			var baseAddress = "https://localhost:7268";
 #elif ANDROID
-		var baseAddress = "http://10.0.2.2:5000";
+		// Use HTTP + mapped loopback port for Android emulator (avoid dev-cert issues)
+		var baseAddress = "http://10.0.2.2:5117";
 #else
-		var baseAddress = "http://localhost:5000";
+			var baseAddress = "https://localhost:7268";
 #endif
 		builder.Services.AddSingleton(new HttpClient { BaseAddress = new Uri(baseAddress) });
+
 		builder.Services.AddSingleton<ApiService>();
 
 #if DEBUG
